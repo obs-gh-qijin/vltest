@@ -38,8 +38,8 @@ export const initializeOtel = () => {
     // Hard-coded headers for Observe
 
     const headers = {
-      // Authorization: `Bearer ${ingestToken}`,
-      // "x-observe-target-package": "Tracing",
+      Authorization: `Bearer ${ingestToken}`,
+      "x-observe-target-package": "Tracing",
     };
 
     // Create the OTLP trace exporter for Observe
@@ -76,8 +76,10 @@ export const shutdownOtel = async () => {
       console.error("Error shutting down OpenTelemetry:", error);
     }
   }
+  process.exit(0);
 };
 
 // Auto-shutdown on process exit
 process.on("SIGTERM", shutdownOtel);
 process.on("SIGINT", shutdownOtel);
+
