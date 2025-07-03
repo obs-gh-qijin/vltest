@@ -17,6 +17,7 @@
   "dependencies": {
     "@netlify/functions": "^4.1.4",
     "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.202.0",
     "@opentelemetry/core": "^2.0.1",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.202.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.202.0",

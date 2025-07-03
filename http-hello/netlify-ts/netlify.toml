@@ -8,6 +8,8 @@
  # OTEL_EXPORTER_OTLP_ENDPOINT = "<YOUR_OBSERVE_COLLECTION_ENDPOINT>/v2/otel"
  # OTEL_SERVICE_NAME = "netlify-ts-functions"
  # OTEL_SERVICE_VERSION = "1.0.0"
+ # OTEL_DEPLOYMENT_ENVIRONMENT = "production"
+ # OBSERVE_INGEST_TOKEN = "<YOUR_INGEST_TOKEN>"
  # OTEL_EXPORTER_OTLP_HEADERS = '{"Authorization":"Bearer <YOUR_INGEST_TOKEN>","x-observe-target-package":"Tracing"}'
 
 [[redirects]]
