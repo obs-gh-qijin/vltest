@@ -1,26 +1,29 @@
 # OpenTelemetry Instrumentation for Netlify TypeScript Functions
 
-This project includes OpenTelemetry (OTEL) instrumentation that automatically traces your Netlify Functions and sends telemetry data to any OTLP-compatible endpoint.
+This project includes comprehensive OpenTelemetry (OTEL) instrumentation that automatically traces your Netlify Functions and sends telemetry data to Observe and other OTLP-compatible endpoints.
 
 ## 🚀 Features
 
-- **Automatic tracing** of function executions with detailed spans
-- **Custom attributes** including HTTP method, route, user agent, client IP
-- **Error tracking** with exception recording and error events
-- **Success/failure events** with custom attributes
-- **Trace ID** included in response headers for correlation
+- **Automatic tracing** of function executions with detailed spans using OpenTelemetry semantic conventions
+- **Comprehensive metrics collection** including request counts, error rates, duration histograms, and active connections
+- **Structured logging** with automatic trace correlation (trace/span IDs in logs)
+- **Enhanced error tracking** with exception recording, error events, and detailed error context
+- **Success/failure events** with custom attributes and business metrics
+- **Trace and Span IDs** included in response headers for request correlation
+- **Resource attributes** following OpenTelemetry semantic conventions for cloud environments
 - **Environment-based configuration** using standard OTEL environment variables
-- **OTLP HTTP export** to any compatible backend
+- **OTLP HTTP export** for both traces and metrics to any compatible backend
+- **Performance optimized** with proper cleanup and graceful shutdown
 
 ## 📋 Configuration
 
 Set the following environment variables to configure OpenTelemetry:
 
-### Required
+### Required for Observe
 
 ```bash
-OTEL_EXPORTER_OTLP_ENDPOINT=https://your-endpoint.com/v2/otel
-OTEL_EXPORTER_OTLP_HEADERS='{"Authorization":"Bearer YOUR_TOKEN","x-observe-target-package":"Tracing"}'
+OTEL_EXPORTER_OTLP_ENDPOINT=https://collect.observeinc.com
+OBSERVE_INGEST_TOKEN=your_observe_ingest_token_here
 ```
 
 ### Optional
@@ -28,6 +31,14 @@ OTEL_EXPORTER_OTLP_HEADERS='{"Authorization":"Bearer YOUR_TOKEN","x-observe-targ
 ```bash
 OTEL_SERVICE_NAME=netlify-ts-functions
 OTEL_SERVICE_VERSION=1.0.0
+NODE_ENV=production
+```
+
+### For Other OTLP Backends
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=https://your-endpoint.com
+OBSERVE_INGEST_TOKEN=your_token_or_api_key
 ```
 
 ## 🔧 Supported OTLP Backends
@@ -67,17 +78,29 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.nr-data.net
 OTEL_EXPORTER_OTLP_HEADERS='{"api-key":"YOUR_LICENSE_KEY"}'
 ```
 
-## 📊 What Gets Traced
+## 📊 What Gets Traced and Measured
 
-The instrumentation automatically captures:
-
-- **Function execution spans** with timing and status
-- **HTTP request details** (method, route, user agent, client IP)
-- **Function-specific attributes** (name, cloud provider, request ID)
-- **Custom events** (function start, success, errors)
-- **Random number generation** (for demo purposes)
+### Distributed Tracing
+- **Function execution spans** with timing and status using OpenTelemetry semantic conventions
+- **HTTP request details** (method, route, URL, user agent, client IP)
+- **Function-specific attributes** (name, cloud provider, request ID, memory limits)
+- **Resource attributes** (service name, version, cloud provider, environment)
+- **Custom events** (function start, success, errors with timestamps)
 - **Error details** with stack traces and exception recording
-- **Trace IDs** in response headers for request correlation
+- **Trace and Span IDs** in response headers for request correlation
+
+### Metrics Collection
+- **`http.server.requests`** - Counter of HTTP requests by status code and status class
+- **`http.server.request_duration`** - Histogram of request durations in milliseconds
+- **`http.server.errors`** - Counter of HTTP errors by status code
+- **`http.server.active_connections`** - Gauge of active HTTP connections
+
+### Structured Logging
+- **JSON-formatted logs** with automatic trace correlation
+- **Log levels** (debug, info, warn, error) with proper severity mapping
+- **Trace/Span IDs** automatically included in every log entry
+- **Contextual attributes** including request ID, function name, and custom business data
+- **Automatic span events** for all log entries
 
 ## 🧪 Testing Locally
 
@@ -108,6 +131,32 @@ pnpm run dev
 
 ## 📁 File Structure
 
-- `src/otel.ts` - OpenTelemetry configuration and initialization
-- `src/functions/hello.ts` - Instrumented Netlify function
-- `netlify.toml` - Environment configuration for deployment
+- `src/functions/otel.ts` - Enhanced OpenTelemetry configuration with metrics and proper environment handling
+- `src/functions/logger.ts` - Structured logging utility with automatic trace correlation
+- `src/functions/hello.ts` - Fully instrumented Netlify function with tracing, metrics, and logging
+- `netlify.toml` - Environment configuration for deployment with Observe integration
+- `package.json` - All required OpenTelemetry dependencies
+
+## 🏗️ Implementation Details
+
+### OpenTelemetry Setup (`otel.ts`)
+- Proper resource configuration with semantic attributes
+- Separate exporters for traces and metrics
+- Periodic metric export (30-second intervals)
+- Graceful shutdown handling
+- Environment variable validation
+
+### Structured Logging (`logger.ts`)
+- JSON-formatted log output
+- Automatic trace/span ID injection
+- Multiple log levels with proper mapping
+- Span event creation for log correlation
+- Configurable service information
+
+### Function Instrumentation (`hello.ts`)
+- Comprehensive span creation with semantic attributes
+- Request timing and performance metrics
+- Active connection tracking
+- Enhanced error handling and reporting
+- Response header injection for trace correlation
+- Business logic observability
