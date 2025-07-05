@@ -4,11 +4,12 @@
   publish = "public"
 
 [build.environment]
-  NODE_ENV = "development"
- # OTEL_EXPORTER_OTLP_ENDPOINT = "<YOUR_OBSERVE_COLLECTION_ENDPOINT>/v2/otel"
- # OTEL_SERVICE_NAME = "netlify-ts-functions"
- # OTEL_SERVICE_VERSION = "1.0.0"
- # OTEL_EXPORTER_OTLP_HEADERS = '{"Authorization":"Bearer <YOUR_INGEST_TOKEN>","x-observe-target-package":"Tracing"}'
+  NODE_ENV = "production"
+  OTEL_EXPORTER_OTLP_ENDPOINT = "https://collect.observeinc.com"
+  OTEL_SERVICE_NAME = "netlify-ts-functions"
+  OTEL_SERVICE_VERSION = "1.0.0"
+  # The OBSERVE_INGEST_TOKEN should be set in Netlify's environment variables UI
+  # OBSERVE_INGEST_TOKEN = "your_token_here"
 
 [[redirects]]
   from = "/hello"
