@@ -5,14 +5,11 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { Resource } from "@opentelemetry/resources";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, ATTR_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
-import { metrics, logs } from "@opentelemetry/api";
+import { metrics } from "@opentelemetry/api";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
-import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
 import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
 import { HttpsInstrumentation } from "@opentelemetry/instrumentation-https";
-import { DnsInstrumentation } from "@opentelemetry/instrumentation-dns";
-import { FsInstrumentation } from "@opentelemetry/instrumentation-fs";
 
 let sdk: NodeSDK | null = null;
 let meterProvider: MeterProvider | null = null;
@@ -151,9 +148,9 @@ export const initializeOtel = () => {
       exportIntervalMillis: 10000, // Export every 10 seconds
     });
 
-    // Configure auto-instrumentations
+    // Configure basic instrumentations for Netlify Functions
     const instrumentations = [
-      // HTTP/HTTPS instrumentation for outgoing requests
+      // HTTP instrumentation for outgoing requests
       new HttpInstrumentation({
         responseHook: (span, response) => {
           span.setAttributes({
@@ -168,6 +165,7 @@ export const initializeOtel = () => {
           });
         },
       }),
+      // HTTPS instrumentation for outgoing requests
       new HttpsInstrumentation({
         responseHook: (span, response) => {
           span.setAttributes({
@@ -182,55 +180,6 @@ export const initializeOtel = () => {
           });
         },
       }),
-      // DNS instrumentation for DNS lookups
-      new DnsInstrumentation({
-        ignoreIncomingRequestHook: () => false,
-        ignoreOutgoingRequestHook: () => false,
-      }),
-      // File system instrumentation
-      new FsInstrumentation({
-        ignoreIncomingRequestHook: () => false,
-        ignoreOutgoingRequestHook: () => false,
-      }),
-      // Additional auto-instrumentations (with selective enablement)
-      ...getNodeAutoInstrumentations({
-        '@opentelemetry/instrumentation-http': {
-          enabled: false, // We're using custom HTTP instrumentation above
-        },
-        '@opentelemetry/instrumentation-https': {
-          enabled: false, // We're using custom HTTPS instrumentation above
-        },
-        '@opentelemetry/instrumentation-dns': {
-          enabled: false, // We're using custom DNS instrumentation above
-        },
-        '@opentelemetry/instrumentation-fs': {
-          enabled: false, // We're using custom FS instrumentation above
-        },
-        '@opentelemetry/instrumentation-express': {
-          enabled: false, // Not needed for Netlify Functions
-        },
-        '@opentelemetry/instrumentation-koa': {
-          enabled: false, // Not needed for Netlify Functions
-        },
-        '@opentelemetry/instrumentation-fastify': {
-          enabled: false, // Not needed for Netlify Functions
-        },
-        '@opentelemetry/instrumentation-hapi': {
-          enabled: false, // Not needed for Netlify Functions
-        },
-        '@opentelemetry/instrumentation-mysql': {
-          enabled: false, // Enable if using MySQL
-        },
-        '@opentelemetry/instrumentation-pg': {
-          enabled: false, // Enable if using PostgreSQL
-        },
-        '@opentelemetry/instrumentation-redis': {
-          enabled: false, // Enable if using Redis
-        },
-        '@opentelemetry/instrumentation-aws-lambda': {
-          enabled: false, // Not needed for Netlify Functions
-        },
-      }),
     ];
 
     // Initialize the SDK with enhanced configuration
@@ -241,6 +190,7 @@ export const initializeOtel = () => {
       instrumentations,
     });
 
+    // Start the SDK
     sdk.start();
     
     console.log(`OpenTelemetry initialized successfully:`);
@@ -266,10 +216,11 @@ export const shutdownOtel = async () => {
       console.error("Error shutting down OpenTelemetry:", error);
     }
   }
-  process.exit(0);
 };
 
-// Auto-shutdown on process exit
-process.on("SIGTERM", shutdownOtel);
-process.on("SIGINT", shutdownOtel);
+// Auto-shutdown on process exit (only in non-serverless environments)
+if (process.env.NODE_ENV !== "production" && typeof process.on === "function") {
+  process.on("SIGTERM", shutdownOtel);
+  process.on("SIGINT", shutdownOtel);
+}
 

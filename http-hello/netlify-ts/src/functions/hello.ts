@@ -4,9 +4,9 @@ import { ATTR_HTTP_REQUEST_METHOD, ATTR_HTTP_ROUTE, ATTR_HTTP_RESPONSE_STATUS_CO
 import { initializeOtel, recordRequest, trackActiveRequest } from "./otel";
 
 // Initialize OpenTelemetry (only once)
-if (!global.otelInitialized) {
+if (!(global as any).otelInitialized) {
   initializeOtel();
-  global.otelInitialized = true;
+  (global as any).otelInitialized = true;
 }
 
 // Get tracer instance
@@ -98,7 +98,7 @@ const handler: Handler = async (event, context) => {
         // Add event for function start
         span.addEvent("function.start", {
           "random.number": randomNumber,
-          "function.cold_start": !global.otelInitialized,
+          "function.cold_start": !(global as any).otelInitialized,
         });
 
         // If the random number is 1, return an error message (1 out of 9 times)
