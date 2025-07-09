@@ -4,9 +4,14 @@ import { ATTR_HTTP_REQUEST_METHOD, ATTR_HTTP_ROUTE, ATTR_HTTP_RESPONSE_STATUS_CO
 import { initializeOtel, recordRequest, trackActiveRequest } from "./otel";
 
 // Initialize OpenTelemetry (only once)
-if (!(global as any).otelInitialized) {
-  initializeOtel();
-  (global as any).otelInitialized = true;
+if (!global.otelInitialized) {
+  try {
+    initializeOtel();
+    global.otelInitialized = true;
+  } catch (error) {
+    console.error("Failed to initialize OpenTelemetry:", error);
+    // Continue without OpenTelemetry if initialization fails
+  }
 }
 
 // Get tracer instance
@@ -46,8 +51,12 @@ const createLogger = (traceId?: string, spanId?: string) => {
 const handler: Handler = async (event, context) => {
   const startTime = Date.now();
   
-  // Track active request
-  trackActiveRequest(true);
+  // Track active request (safely)
+  try {
+    trackActiveRequest(true);
+  } catch (error) {
+    console.error("Failed to track active request:", error);
+  }
   
   // Create a span for the function execution with semantic conventions
   return tracer.startActiveSpan(
@@ -98,7 +107,7 @@ const handler: Handler = async (event, context) => {
         // Add event for function start
         span.addEvent("function.start", {
           "random.number": randomNumber,
-          "function.cold_start": !(global as any).otelInitialized,
+          "function.cold_start": !global.otelInitialized,
         });
 
         // If the random number is 1, return an error message (1 out of 9 times)
@@ -121,10 +130,14 @@ const handler: Handler = async (event, context) => {
           
           // Calculate duration and record metrics
           const duration = Date.now() - startTime;
-          recordRequest(500, duration, {
-            "http.method": event.httpMethod || "GET",
-            "error.type": "random_error",
-          });
+          try {
+            recordRequest(500, duration, {
+              "http.method": event.httpMethod || "GET",
+              "error.type": "random_error",
+            });
+          } catch (error) {
+            console.error("Failed to record request metrics:", error);
+          }
 
           // Add error event
           span.addEvent("function.error", {
@@ -152,9 +165,13 @@ const handler: Handler = async (event, context) => {
         
         // Calculate duration and record metrics
         const duration = Date.now() - startTime;
-        recordRequest(200, duration, {
-          "http.method": event.httpMethod || "GET",
-        });
+        try {
+          recordRequest(200, duration, {
+            "http.method": event.httpMethod || "GET",
+          });
+        } catch (error) {
+          console.error("Failed to record request metrics:", error);
+        }
 
         // Add success event
         span.addEvent("function.success", {
@@ -197,10 +214,14 @@ const handler: Handler = async (event, context) => {
         
         // Calculate duration and record metrics
         const duration = Date.now() - startTime;
-        recordRequest(500, duration, {
-          "http.method": event.httpMethod || "GET",
-          "error.type": "unhandled_error",
-        });
+        try {
+          recordRequest(500, duration, {
+            "http.method": event.httpMethod || "GET",
+            "error.type": "unhandled_error",
+          });
+        } catch (error) {
+          console.error("Failed to record request metrics:", error);
+        }
 
         if (error instanceof Error) {
           span.recordException(error);
@@ -222,8 +243,12 @@ const handler: Handler = async (event, context) => {
           },
         };
       } finally {
-        // Track active request completion
-        trackActiveRequest(false);
+        // Track active request completion (safely)
+        try {
+          trackActiveRequest(false);
+        } catch (error) {
+          console.error("Failed to track active request completion:", error);
+        }
         
         // End the span
         span.end();

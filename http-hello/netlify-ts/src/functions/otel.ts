@@ -7,9 +7,6 @@ import { Resource } from "@opentelemetry/resources";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, ATTR_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
 import { metrics } from "@opentelemetry/api";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
-import { diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
-import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
-import { HttpsInstrumentation } from "@opentelemetry/instrumentation-https";
 
 let sdk: NodeSDK | null = null;
 let meterProvider: MeterProvider | null = null;
@@ -18,11 +15,6 @@ let meterProvider: MeterProvider | null = null;
 const SERVICE_NAME = process.env.OTEL_SERVICE_NAME || "netlify-ts-functions";
 const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || "1.0.0";
 const ENVIRONMENT = process.env.OTEL_DEPLOYMENT_ENVIRONMENT || process.env.NODE_ENV || "development";
-
-// Enable OpenTelemetry diagnostics in development
-if (ENVIRONMENT === "development") {
-  diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
-}
 
 // Create comprehensive metrics
 const meter = metrics.getMeter(SERVICE_NAME, SERVICE_VERSION);
@@ -142,47 +134,16 @@ export const initializeOtel = () => {
       },
     });
 
-    // Create metrics reader
+    // Create metrics reader with longer interval for serverless
     const metricsReader = new PeriodicExportingMetricReader({
       exporter: metricsExporter,
-      exportIntervalMillis: 10000, // Export every 10 seconds
+      exportIntervalMillis: 30000, // Export every 30 seconds for serverless
     });
 
-    // Configure basic instrumentations for Netlify Functions
-    const instrumentations = [
-      // HTTP instrumentation for outgoing requests
-      new HttpInstrumentation({
-        responseHook: (span, response) => {
-          span.setAttributes({
-            "http.response.status_code": response.statusCode || 0,
-            "http.response.status_text": response.statusMessage || "unknown",
-          });
-        },
-        requestHook: (span, request) => {
-          span.setAttributes({
-            "http.request.method": request.method || "GET",
-            "http.request.url": request.url || "unknown",
-          });
-        },
-      }),
-      // HTTPS instrumentation for outgoing requests
-      new HttpsInstrumentation({
-        responseHook: (span, response) => {
-          span.setAttributes({
-            "https.response.status_code": response.statusCode || 0,
-            "https.response.status_text": response.statusMessage || "unknown",
-          });
-        },
-        requestHook: (span, request) => {
-          span.setAttributes({
-            "https.request.method": request.method || "GET",
-            "https.request.url": request.url || "unknown",
-          });
-        },
-      }),
-    ];
+    // Minimal instrumentation for Netlify Functions
+    const instrumentations: any[] = [];
 
-    // Initialize the SDK with enhanced configuration
+    // Initialize the SDK with minimal configuration
     sdk = new NodeSDK({
       resource,
       spanProcessor: new BatchSpanProcessor(traceExporter),
@@ -190,10 +151,9 @@ export const initializeOtel = () => {
       instrumentations,
     });
 
-    // Start the SDK
     sdk.start();
     
-    console.log(`OpenTelemetry initialized successfully:`);
+    console.log(`OpenTelemetry initialized successfully for serverless:`);
     console.log(`  Service: ${SERVICE_NAME}@${SERVICE_VERSION}`);
     console.log(`  Environment: ${ENVIRONMENT}`);
     console.log(`  Trace endpoint: ${traceEndpoint}`);
@@ -206,7 +166,7 @@ export const initializeOtel = () => {
   }
 };
 
-// Graceful shutdown
+// Graceful shutdown (simplified for serverless)
 export const shutdownOtel = async () => {
   if (sdk) {
     try {
@@ -217,10 +177,3 @@ export const shutdownOtel = async () => {
     }
   }
 };
-
-// Auto-shutdown on process exit (only in non-serverless environments)
-if (process.env.NODE_ENV !== "production" && typeof process.on === "function") {
-  process.on("SIGTERM", shutdownOtel);
-  process.on("SIGINT", shutdownOtel);
-}
-
