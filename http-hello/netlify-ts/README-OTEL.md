@@ -1,33 +1,77 @@
-# OpenTelemetry Instrumentation for Netlify TypeScript Functions
+# Comprehensive OpenTelemetry Instrumentation for Netlify TypeScript Functions
 
-This project includes OpenTelemetry (OTEL) instrumentation that automatically traces your Netlify Functions and sends telemetry data to any OTLP-compatible endpoint.
+This project includes comprehensive OpenTelemetry (OTEL) instrumentation that automatically traces your Netlify Functions, collects metrics, and provides structured logging with full observability.
 
 ## 🚀 Features
 
-- **Automatic tracing** of function executions with detailed spans
-- **Custom attributes** including HTTP method, route, user agent, client IP
+### Tracing
+- **Automatic distributed tracing** with proper span lifecycle management
+- **Semantic conventions compliance** for HTTP attributes
+- **Auto-instrumentation** for HTTP/HTTPS, DNS, and file system operations
+- **Custom spans** for function execution with detailed attributes
 - **Error tracking** with exception recording and error events
-- **Success/failure events** with custom attributes
-- **Trace ID** included in response headers for correlation
+- **Trace and span IDs** included in response headers for correlation
+
+### Metrics
+- **HTTP request counters** with status code and method dimensions
+- **Request duration histograms** for latency analysis
+- **Active request counters** for real-time monitoring
+- **Function execution time** and invocation counters
+- **Error rate tracking** with error type classification
+- **Periodic metric export** to OTLP-compatible backends
+
+### Logging
+- **Structured JSON logging** with trace correlation
+- **Automatic trace and span ID injection** into all log entries
+- **Contextual logging** with request details and performance metrics
+- **Error logging** with stack traces and structured error information
+- **Multiple log levels** (info, warn, error) with proper formatting
+
+### Configuration
 - **Environment-based configuration** using standard OTEL environment variables
+- **Resource attributes** with service information, cloud provider, and runtime details
+- **Automatic environment detection** (development, staging, production)
+- **Comprehensive instrumentation** with selective enablement
 - **OTLP HTTP export** to any compatible backend
 
 ## 📋 Configuration
 
-Set the following environment variables to configure OpenTelemetry:
-
-### Required
+### Required Environment Variables
 
 ```bash
+# Main OTLP endpoint (without /v1/traces or /v1/metrics suffix)
 OTEL_EXPORTER_OTLP_ENDPOINT=https://your-endpoint.com/v2/otel
-OTEL_EXPORTER_OTLP_HEADERS='{"Authorization":"Bearer YOUR_TOKEN","x-observe-target-package":"Tracing"}'
+
+# For Observe specifically:
+OBSERVE_INGEST_TOKEN=your_observe_ingest_token_here
 ```
 
-### Optional
+### Optional Environment Variables
 
 ```bash
+# Service identification
 OTEL_SERVICE_NAME=netlify-ts-functions
 OTEL_SERVICE_VERSION=1.0.0
+OTEL_DEPLOYMENT_ENVIRONMENT=production
+
+# Alternative token variable names (fallback)
+OBSERVE_TOKEN=your_observe_ingest_token_here
+
+# Node.js environment (used for environment detection)
+NODE_ENV=production
+```
+
+### Netlify Environment Configuration
+
+In your `netlify.toml` file:
+
+```toml
+[build.environment]
+  OTEL_EXPORTER_OTLP_ENDPOINT = "https://your-tenant.collect.observeinc.com/v2/otel"
+  OTEL_SERVICE_NAME = "netlify-ts-functions"
+  OTEL_SERVICE_VERSION = "1.0.0"
+  OTEL_DEPLOYMENT_ENVIRONMENT = "production"
+  OBSERVE_INGEST_TOKEN = "your_observe_ingest_token_here"
 ```
 
 ## 🔧 Supported OTLP Backends
@@ -67,21 +111,41 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.nr-data.net
 OTEL_EXPORTER_OTLP_HEADERS='{"api-key":"YOUR_LICENSE_KEY"}'
 ```
 
-## 📊 What Gets Traced
+## 📊 What Gets Instrumented
 
-The instrumentation automatically captures:
+### Automatic Tracing
+- **Function execution spans** with complete lifecycle (start, end, duration)
+- **HTTP/HTTPS outgoing requests** with request/response details
+- **DNS lookups** for external service dependencies
+- **File system operations** for debugging and performance analysis
+- **Error spans** with proper status codes and exception details
 
-- **Function execution spans** with timing and status
-- **HTTP request details** (method, route, user agent, client IP)
-- **Function-specific attributes** (name, cloud provider, request ID)
-- **Custom events** (function start, success, errors)
-- **Random number generation** (for demo purposes)
-- **Error details** with stack traces and exception recording
-- **Trace IDs** in response headers for request correlation
+### Semantic Attributes
+- **HTTP attributes** following OpenTelemetry semantic conventions
+- **Cloud provider metadata** (Netlify, AWS Lambda context)
+- **Function metadata** (name, version, runtime, cold start detection)
+- **Request context** (method, route, user agent, client IP, request ID)
+- **Error context** (error type, message, stack trace)
+- **Performance metrics** (execution time, random demo values)
+
+### Comprehensive Metrics
+- **Request counters** by status code, method, and error type
+- **Request duration histograms** for latency percentiles
+- **Active request gauges** for real-time monitoring
+- **Function invocation counters** with success/failure rates
+- **Error rate metrics** with classification and trends
+
+### Structured Logging
+- **JSON-formatted logs** with consistent structure
+- **Trace correlation** with automatic trace/span ID injection
+- **Request lifecycle logging** (start, success, error, completion)
+- **Performance logging** with execution duration and metrics
+- **Error logging** with full context and stack traces
+- **Contextual attributes** for filtering and analysis
 
 ## 🧪 Testing Locally
 
-1. Start a local OTLP collector (e.g., Jaeger):
+### 1. Start a local OTLP collector (e.g., Jaeger with metrics support):
 
 ```bash
 docker run -d --name jaeger \
@@ -91,23 +155,124 @@ docker run -d --name jaeger \
   jaegertracing/all-in-one:latest
 ```
 
-2. Set environment variables:
+### 2. Set environment variables:
 
 ```bash
 export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 export OTEL_SERVICE_NAME=netlify-ts-functions
+export OTEL_SERVICE_VERSION=1.0.0
+export OTEL_DEPLOYMENT_ENVIRONMENT=development
+export NODE_ENV=development
 ```
 
-3. Run your Netlify function:
+### 3. Install dependencies:
+
+```bash
+pnpm install
+```
+
+### 4. Build the project:
+
+```bash
+pnpm run build
+```
+
+### 5. Run your Netlify function:
 
 ```bash
 pnpm run dev
 ```
 
-4. Visit http://localhost:16686 to view traces in Jaeger UI
+### 6. Test the function:
+
+```bash
+curl http://localhost:8888/hello
+```
+
+### 7. View observability data:
+- **Traces**: Visit http://localhost:16686 to view traces in Jaeger UI
+- **Logs**: Check the console output for structured JSON logs
+- **Metrics**: Available through Jaeger's metrics integration
+
+## 🔍 Observability Data Examples
+
+### Trace Example
+```json
+{
+  "traceId": "abc123...",
+  "spanId": "def456...",
+  "name": "hello-function",
+  "kind": "SERVER",
+  "status": "OK",
+  "attributes": {
+    "http.request.method": "GET",
+    "http.route": "/hello",
+    "http.response.status_code": 200,
+    "user_agent.original": "curl/7.68.0",
+    "client.address": "127.0.0.1",
+    "function.name": "hello",
+    "cloud.provider": "netlify",
+    "random.number": 5
+  }
+}
+```
+
+### Log Example
+```json
+{
+  "level": "info",
+  "message": "Function execution completed successfully",
+  "service": "netlify-ts-functions",
+  "version": "1.0.0",
+  "environment": "development",
+  "timestamp": "2024-01-01T12:00:00.000Z",
+  "traceId": "abc123...",
+  "spanId": "def456...",
+  "randomNumber": 5,
+  "statusCode": 200,
+  "duration": 45,
+  "responseMessage": "netlify-ts hello success"
+}
+```
+
+### Metrics Example
+```
+http.server.requests{http.status_code="200",service.name="netlify-ts-functions"} 1
+http.server.request.duration{http.status_code="200",service.name="netlify-ts-functions"} 45
+function.invocations{function.name="hello",service.name="netlify-ts-functions"} 1
+```
 
 ## 📁 File Structure
 
-- `src/otel.ts` - OpenTelemetry configuration and initialization
-- `src/functions/hello.ts` - Instrumented Netlify function
+- `src/functions/otel.ts` - Comprehensive OpenTelemetry configuration and initialization
+- `src/functions/hello.ts` - Fully instrumented Netlify function with tracing, metrics, and logging
 - `netlify.toml` - Environment configuration for deployment
+- `package.json` - Dependencies including all OpenTelemetry instrumentation packages
+- `tsconfig.json` - TypeScript configuration optimized for Netlify Functions
+
+## 🔧 Technical Implementation
+
+### OpenTelemetry SDK Configuration
+- **NodeSDK** with comprehensive resource attributes
+- **BatchSpanProcessor** for efficient trace export
+- **PeriodicExportingMetricReader** for regular metrics export
+- **Auto-instrumentations** for common Node.js libraries
+- **Custom instrumentations** for HTTP, HTTPS, DNS, and file system
+
+### Metrics Collection
+- **Counters** for request counts, invocations, and errors
+- **Histograms** for request duration and execution time
+- **UpDownCounters** for active request tracking
+- **Dimensional attributes** for filtering and aggregation
+
+### Error Handling
+- **Proper span status** with error codes and messages
+- **Exception recording** with stack traces
+- **Error events** with contextual information
+- **Structured error logging** with correlation IDs
+
+### Performance Optimization
+- **Efficient span lifecycle** management
+- **Batch processing** for traces and metrics
+- **Selective instrumentation** to minimize overhead
+- **Diagnostic logging** for development debugging
