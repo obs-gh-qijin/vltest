@@ -6,11 +6,13 @@ import { initializeOtel, recordRequest, trackActiveRequest } from "./otel";
 // Initialize OpenTelemetry (only once)
 if (!global.otelInitialized) {
   try {
-    initializeOtel();
+    const result = initializeOtel();
     global.otelInitialized = true;
+    console.log("OpenTelemetry initialization completed successfully");
   } catch (error) {
     console.error("Failed to initialize OpenTelemetry:", error);
     // Continue without OpenTelemetry if initialization fails
+    // This ensures the function still works even if observability fails
   }
 }
 
