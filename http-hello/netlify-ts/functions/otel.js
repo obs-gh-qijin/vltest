@@ -10,6 +10,7 @@ const resources_1 = require("@opentelemetry/resources");
 const semantic_conventions_1 = require("@opentelemetry/semantic-conventions");
 const api_1 = require("@opentelemetry/api");
 const sdk_metrics_2 = require("@opentelemetry/sdk-metrics");
+const api_2 = require("@opentelemetry/api");
 let sdk = null;
 let meterProvider = null;
 // Service configuration
@@ -18,7 +19,7 @@ const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || "1.0.0";
 const ENVIRONMENT = process.env.OTEL_DEPLOYMENT_ENVIRONMENT || process.env.NODE_ENV || "development";
 // Enable OpenTelemetry diagnostics in development
 if (ENVIRONMENT === "development") {
-    api_1.diag.setLogger(new api_1.DiagConsoleLogger(), api_1.DiagLogLevel.INFO);
+    api_2.diag.setLogger(new api_2.DiagConsoleLogger(), api_2.DiagLogLevel.INFO);
 }
 // Create comprehensive metrics
 const meter = api_1.metrics.getMeter(SERVICE_NAME, SERVICE_VERSION);
@@ -144,7 +145,8 @@ const initializeOtel = () => {
         console.log(`  Token configured: ${ingestToken ? 'Yes' : 'No'}`);
         console.log(`  Diagnostics enabled: ${ENVIRONMENT === 'development' ? 'Yes' : 'No'}`);
         return sdk;
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Error initializing OpenTelemetry:", error);
         return null;
     }
@@ -156,7 +158,8 @@ const shutdownOtel = async () => {
         try {
             await sdk.shutdown();
             console.log("OpenTelemetry shut down successfully");
-        } catch (error) {
+        }
+        catch (error) {
             console.error("Error shutting down OpenTelemetry:", error);
         }
     }
