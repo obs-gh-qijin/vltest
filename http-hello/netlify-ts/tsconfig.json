@@ -15,6 +15,6 @@
       "*": ["src/*"]
     }
   },
-  "include": ["src/functions/**/*"],
+  "include": ["src/functions/**/*", "src/types/**/*"],
   "exclude": ["functions/**/*"]
 }
