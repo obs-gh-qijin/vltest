@@ -6,8 +6,16 @@ const semantic_conventions_1 = require("@opentelemetry/semantic-conventions");
 const otel_1 = require("./otel");
 // Initialize OpenTelemetry (only once)
 if (!global.otelInitialized) {
-    (0, otel_1.initializeOtel)();
-    global.otelInitialized = true;
+    try {
+        const result = (0, otel_1.initializeOtel)();
+        global.otelInitialized = true;
+        console.log("OpenTelemetry initialization completed successfully");
+    }
+    catch (error) {
+        console.error("Failed to initialize OpenTelemetry:", error);
+        // Continue without OpenTelemetry if initialization fails
+        // This ensures the function still works even if observability fails
+    }
 }
 // Get tracer instance
 const tracer = api_1.trace.getTracer("netlify-functions", "1.0.0");
@@ -42,8 +50,13 @@ const createLogger = (traceId, spanId) => {
 };
 const handler = async (event, context) => {
     const startTime = Date.now();
-    // Track active request
-    (0, otel_1.trackActiveRequest)(true);
+    // Track active request (safely)
+    try {
+        (0, otel_1.trackActiveRequest)(true);
+    }
+    catch (error) {
+        console.error("Failed to track active request:", error);
+    }
     // Create a span for the function execution with semantic conventions
     return tracer.startActiveSpan("hello-function", {
         kind: api_1.SpanKind.SERVER,
@@ -104,10 +117,15 @@ const handler = async (event, context) => {
                 });
                 // Calculate duration and record metrics
                 const duration = Date.now() - startTime;
-                (0, otel_1.recordRequest)(500, duration, {
-                    "http.method": event.httpMethod || "GET",
-                    "error.type": "random_error",
-                });
+                try {
+                    (0, otel_1.recordRequest)(500, duration, {
+                        "http.method": event.httpMethod || "GET",
+                        "error.type": "random_error",
+                    });
+                }
+                catch (error) {
+                    console.error("Failed to record request metrics:", error);
+                }
                 // Add error event
                 span.addEvent("function.error", {
                     "error.type": "random_error",
@@ -129,9 +147,14 @@ const handler = async (event, context) => {
             span.setAttributes({ [semantic_conventions_1.ATTR_HTTP_RESPONSE_STATUS_CODE]: 200 });
             // Calculate duration and record metrics
             const duration = Date.now() - startTime;
-            (0, otel_1.recordRequest)(200, duration, {
-                "http.method": event.httpMethod || "GET",
-            });
+            try {
+                (0, otel_1.recordRequest)(200, duration, {
+                    "http.method": event.httpMethod || "GET",
+                });
+            }
+            catch (error) {
+                console.error("Failed to record request metrics:", error);
+            }
             // Add success event
             span.addEvent("function.success", {
                 "response.message": "netlify-ts hello success",
@@ -169,10 +192,15 @@ const handler = async (event, context) => {
             });
             // Calculate duration and record metrics
             const duration = Date.now() - startTime;
-            (0, otel_1.recordRequest)(500, duration, {
-                "http.method": event.httpMethod || "GET",
-                "error.type": "unhandled_error",
-            });
+            try {
+                (0, otel_1.recordRequest)(500, duration, {
+                    "http.method": event.httpMethod || "GET",
+                    "error.type": "unhandled_error",
+                });
+            }
+            catch (error) {
+                console.error("Failed to record request metrics:", error);
+            }
             if (error instanceof Error) {
                 span.recordException(error);
             }
@@ -192,8 +220,13 @@ const handler = async (event, context) => {
             };
         }
         finally {
-            // Track active request completion
-            (0, otel_1.trackActiveRequest)(false);
+            // Track active request completion (safely)
+            try {
+                (0, otel_1.trackActiveRequest)(false);
+            }
+            catch (error) {
+                console.error("Failed to track active request completion:", error);
+            }
             // End the span
             span.end();
         }

@@ -10,12 +10,6 @@ const resources_1 = require("@opentelemetry/resources");
 const semantic_conventions_1 = require("@opentelemetry/semantic-conventions");
 const api_1 = require("@opentelemetry/api");
 const sdk_metrics_2 = require("@opentelemetry/sdk-metrics");
-const api_2 = require("@opentelemetry/api");
-const auto_instrumentations_node_1 = require("@opentelemetry/auto-instrumentations-node");
-const instrumentation_http_1 = require("@opentelemetry/instrumentation-http");
-const instrumentation_https_1 = require("@opentelemetry/instrumentation-https");
-const instrumentation_dns_1 = require("@opentelemetry/instrumentation-dns");
-const instrumentation_fs_1 = require("@opentelemetry/instrumentation-fs");
 let sdk = null;
 let meterProvider = null;
 // Service configuration
@@ -24,7 +18,7 @@ const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || "1.0.0";
 const ENVIRONMENT = process.env.OTEL_DEPLOYMENT_ENVIRONMENT || process.env.NODE_ENV || "development";
 // Enable OpenTelemetry diagnostics in development
 if (ENVIRONMENT === "development") {
-    api_2.diag.setLogger(new api_2.DiagConsoleLogger(), api_2.DiagLogLevel.INFO);
+    api_1.diag.setLogger(new api_1.DiagConsoleLogger(), api_1.DiagLogLevel.INFO);
 }
 // Create comprehensive metrics
 const meter = api_1.metrics.getMeter(SERVICE_NAME, SERVICE_VERSION);
@@ -127,93 +121,14 @@ const initializeOtel = () => {
                 "x-observe-target-package": "Metrics",
             },
         });
-        // Create metrics reader
+        // Create metrics reader optimized for serverless
         const metricsReader = new sdk_metrics_1.PeriodicExportingMetricReader({
             exporter: metricsExporter,
-            exportIntervalMillis: 10000, // Export every 10 seconds
+            exportIntervalMillis: 10000, // Export every 10 seconds for faster feedback
         });
-        // Configure auto-instrumentations
-        const instrumentations = [
-            // HTTP/HTTPS instrumentation for outgoing requests
-            new instrumentation_http_1.HttpInstrumentation({
-                responseHook: (span, response) => {
-                    span.setAttributes({
-                        "http.response.status_code": response.statusCode || 0,
-                        "http.response.status_text": response.statusMessage || "unknown",
-                    });
-                },
-                requestHook: (span, request) => {
-                    span.setAttributes({
-                        "http.request.method": request.method || "GET",
-                        "http.request.url": request.url || "unknown",
-                    });
-                },
-            }),
-            new instrumentation_https_1.HttpsInstrumentation({
-                responseHook: (span, response) => {
-                    span.setAttributes({
-                        "https.response.status_code": response.statusCode || 0,
-                        "https.response.status_text": response.statusMessage || "unknown",
-                    });
-                },
-                requestHook: (span, request) => {
-                    span.setAttributes({
-                        "https.request.method": request.method || "GET",
-                        "https.request.url": request.url || "unknown",
-                    });
-                },
-            }),
-            // DNS instrumentation for DNS lookups
-            new instrumentation_dns_1.DnsInstrumentation({
-                ignoreIncomingRequestHook: () => false,
-                ignoreOutgoingRequestHook: () => false,
-            }),
-            // File system instrumentation
-            new instrumentation_fs_1.FsInstrumentation({
-                ignoreIncomingRequestHook: () => false,
-                ignoreOutgoingRequestHook: () => false,
-            }),
-            // Additional auto-instrumentations (with selective enablement)
-            ...(0, auto_instrumentations_node_1.getNodeAutoInstrumentations)({
-                '@opentelemetry/instrumentation-http': {
-                    enabled: false, // We're using custom HTTP instrumentation above
-                },
-                '@opentelemetry/instrumentation-https': {
-                    enabled: false, // We're using custom HTTPS instrumentation above
-                },
-                '@opentelemetry/instrumentation-dns': {
-                    enabled: false, // We're using custom DNS instrumentation above
-                },
-                '@opentelemetry/instrumentation-fs': {
-                    enabled: false, // We're using custom FS instrumentation above
-                },
-                '@opentelemetry/instrumentation-express': {
-                    enabled: false, // Not needed for Netlify Functions
-                },
-                '@opentelemetry/instrumentation-koa': {
-                    enabled: false, // Not needed for Netlify Functions
-                },
-                '@opentelemetry/instrumentation-fastify': {
-                    enabled: false, // Not needed for Netlify Functions
-                },
-                '@opentelemetry/instrumentation-hapi': {
-                    enabled: false, // Not needed for Netlify Functions
-                },
-                '@opentelemetry/instrumentation-mysql': {
-                    enabled: false, // Enable if using MySQL
-                },
-                '@opentelemetry/instrumentation-pg': {
-                    enabled: false, // Enable if using PostgreSQL
-                },
-                '@opentelemetry/instrumentation-redis': {
-                    enabled: false, // Enable if using Redis
-                },
-                '@opentelemetry/instrumentation-aws-lambda': {
-                    enabled: false, // Not needed for Netlify Functions
-                },
-            }),
-        ];
-        // Initialize the SDK with enhanced configuration
+        // Minimal instrumentation for Netlify Functions - disable most to reduce cold start time
+        const instrumentations = [];
+        // Initialize the SDK with minimal configuration
         sdk = new sdk_node_1.NodeSDK({
             resource,
             spanProcessor: new sdk_trace_base_1.BatchSpanProcessor(traceExporter),
@@ -226,6 +141,8 @@ const initializeOtel = () => {
         console.log(`  Environment: ${ENVIRONMENT}`);
         console.log(`  Trace endpoint: ${traceEndpoint}`);
         console.log(`  Metrics endpoint: ${metricsEndpoint}`);
+        console.log(`  Token configured: ${ingestToken ? 'Yes' : 'No'}`);
+        console.log(`  Diagnostics enabled: ${ENVIRONMENT === 'development' ? 'Yes' : 'No'}`);
         return sdk;
     }
     catch (error) {
@@ -234,7 +151,7 @@ const initializeOtel = () => {
     }
 };
 exports.initializeOtel = initializeOtel;
-// Graceful shutdown
+// Graceful shutdown (simplified for serverless)
 const shutdownOtel = async () => {
     if (sdk) {
         try {
@@ -245,9 +162,5 @@ const shutdownOtel = async () => {
             console.error("Error shutting down OpenTelemetry:", error);
         }
     }
-    process.exit(0);
 };
 exports.shutdownOtel = shutdownOtel;
-// Auto-shutdown on process exit
-process.on("SIGTERM", exports.shutdownOtel);
-process.on("SIGINT", exports.shutdownOtel);
