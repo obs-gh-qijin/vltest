@@ -144,8 +144,7 @@ const initializeOtel = () => {
         console.log(`  Token configured: ${ingestToken ? 'Yes' : 'No'}`);
         console.log(`  Diagnostics enabled: ${ENVIRONMENT === 'development' ? 'Yes' : 'No'}`);
         return sdk;
-    }
-    catch (error) {
+    } catch (error) {
         console.error("Error initializing OpenTelemetry:", error);
         return null;
     }
@@ -157,8 +156,7 @@ const shutdownOtel = async () => {
         try {
             await sdk.shutdown();
             console.log("OpenTelemetry shut down successfully");
-        }
-        catch (error) {
+        } catch (error) {
             console.error("Error shutting down OpenTelemetry:", error);
         }
     }
