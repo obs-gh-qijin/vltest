@@ -5,7 +5,7 @@ import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { Resource } from "@opentelemetry/resources";
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, ATTR_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
-import { metrics } from "@opentelemetry/api";
+import { metrics, diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 
 let sdk: NodeSDK | null = null;
@@ -15,6 +15,11 @@ let meterProvider: MeterProvider | null = null;
 const SERVICE_NAME = process.env.OTEL_SERVICE_NAME || "netlify-ts-functions";
 const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || "1.0.0";
 const ENVIRONMENT = process.env.OTEL_DEPLOYMENT_ENVIRONMENT || process.env.NODE_ENV || "development";
+
+// Enable OpenTelemetry diagnostics in development
+if (ENVIRONMENT === "development") {
+  diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+}
 
 // Create comprehensive metrics
 const meter = metrics.getMeter(SERVICE_NAME, SERVICE_VERSION);
@@ -134,13 +139,13 @@ export const initializeOtel = () => {
       },
     });
 
-    // Create metrics reader with longer interval for serverless
+    // Create metrics reader optimized for serverless
     const metricsReader = new PeriodicExportingMetricReader({
       exporter: metricsExporter,
-      exportIntervalMillis: 30000, // Export every 30 seconds for serverless
+      exportIntervalMillis: 10000, // Export every 10 seconds for faster feedback
     });
 
-    // Minimal instrumentation for Netlify Functions
+    // Minimal instrumentation for Netlify Functions - disable most to reduce cold start time
     const instrumentations: any[] = [];
 
     // Initialize the SDK with minimal configuration
@@ -153,11 +158,13 @@ export const initializeOtel = () => {
 
     sdk.start();
     
-    console.log(`OpenTelemetry initialized successfully for serverless:`);
+    console.log(`OpenTelemetry initialized successfully:`);
     console.log(`  Service: ${SERVICE_NAME}@${SERVICE_VERSION}`);
     console.log(`  Environment: ${ENVIRONMENT}`);
     console.log(`  Trace endpoint: ${traceEndpoint}`);
     console.log(`  Metrics endpoint: ${metricsEndpoint}`);
+    console.log(`  Token configured: ${ingestToken ? 'Yes' : 'No'}`);
+    console.log(`  Diagnostics enabled: ${ENVIRONMENT === 'development' ? 'Yes' : 'No'}`);
 
     return sdk;
   } catch (error) {
