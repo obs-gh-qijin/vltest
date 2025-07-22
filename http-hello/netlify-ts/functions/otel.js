@@ -9,8 +9,6 @@ const sdk_metrics_1 = require("@opentelemetry/sdk-metrics");
 const resources_1 = require("@opentelemetry/resources");
 const semantic_conventions_1 = require("@opentelemetry/semantic-conventions");
 const api_1 = require("@opentelemetry/api");
-const sdk_metrics_2 = require("@opentelemetry/sdk-metrics");
-const api_2 = require("@opentelemetry/api");
 let sdk = null;
 let meterProvider = null;
 // Service configuration
@@ -19,7 +17,7 @@ const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || "1.0.0";
 const ENVIRONMENT = process.env.OTEL_DEPLOYMENT_ENVIRONMENT || process.env.NODE_ENV || "development";
 // Enable OpenTelemetry diagnostics in development
 if (ENVIRONMENT === "development") {
-    api_2.diag.setLogger(new api_2.DiagConsoleLogger(), api_2.DiagLogLevel.INFO);
+    api_1.diag.setLogger(new api_1.DiagConsoleLogger(), api_1.DiagLogLevel.INFO);
 }
 // Create comprehensive metrics
 const meter = api_1.metrics.getMeter(SERVICE_NAME, SERVICE_VERSION);
@@ -87,12 +85,15 @@ const initializeOtel = () => {
         const baseEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318";
         const traceEndpoint = `${baseEndpoint}/v1/traces`;
         const metricsEndpoint = `${baseEndpoint}/v1/metrics`;
-        const ingestToken = process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN || "your_observe_ingest_token_here";
+        const ingestToken = process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN;
+        if (!ingestToken) {
+            console.warn("Warning: No Observe ingest token provided. Set OBSERVE_INGEST_TOKEN environment variable for proper observability data export.");
+        }
         // Create comprehensive resource attributes
         const resource = new resources_1.Resource({
             [semantic_conventions_1.ATTR_SERVICE_NAME]: SERVICE_NAME,
             [semantic_conventions_1.ATTR_SERVICE_VERSION]: SERVICE_VERSION,
-            [semantic_conventions_1.ATTR_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
+            [semantic_conventions_1.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
             "service.instance.id": process.env.AWS_LAMBDA_FUNCTION_NAME || "netlify-function",
             "cloud.provider": "netlify",
             "cloud.platform": "netlify_functions",
