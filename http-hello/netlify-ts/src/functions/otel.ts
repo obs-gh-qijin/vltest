@@ -1,15 +1,12 @@
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
-import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { Resource } from "@opentelemetry/resources";
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, ATTR_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
 import { metrics, diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
-import { MeterProvider } from "@opentelemetry/sdk-metrics";
 
 let sdk: NodeSDK | null = null;
-let meterProvider: MeterProvider | null = null;
 
 // Service configuration
 const SERVICE_NAME = process.env.OTEL_SERVICE_NAME || "netlify-ts-functions";
@@ -105,7 +102,7 @@ export const initializeOtel = () => {
     const resource = new Resource({
       [ATTR_SERVICE_NAME]: SERVICE_NAME,
       [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
-      [ATTR_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
+      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
       "service.instance.id": process.env.AWS_LAMBDA_FUNCTION_NAME || "netlify-function",
       "cloud.provider": "netlify",
       "cloud.platform": "netlify_functions",
@@ -151,8 +148,8 @@ export const initializeOtel = () => {
     // Initialize the SDK with minimal configuration
     sdk = new NodeSDK({
       resource,
-      spanProcessor: new BatchSpanProcessor(traceExporter),
-      metricReader: metricsReader,
+      traceExporter,
+      metricReader: metricsReader as any, // Type assertion to resolve version mismatch
       instrumentations,
     });
 
