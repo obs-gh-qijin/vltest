@@ -10,7 +10,8 @@ if (!global.otelInitialized) {
         const result = (0, otel_1.initializeOtel)();
         global.otelInitialized = true;
         console.log("OpenTelemetry initialization completed successfully");
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Failed to initialize OpenTelemetry:", error);
         // Continue without OpenTelemetry if initialization fails
         // This ensures the function still works even if observability fails
@@ -52,7 +53,8 @@ const handler = async (event, context) => {
     // Track active request (safely)
     try {
         (0, otel_1.trackActiveRequest)(true);
-    } catch (error) {
+    }
+    catch (error) {
         console.error("Failed to track active request:", error);
     }
     // Create a span for the function execution with semantic conventions
@@ -70,17 +72,18 @@ const handler = async (event, context) => {
             "netlify.request_id": context.awsRequestId || "unknown",
         },
     }, async (span) => {
+        var _a, _b, _c, _d, _e;
         const spanContext = span.spanContext();
         const logger = createLogger(spanContext.traceId, spanContext.spanId);
         try {
             // Add additional semantic attributes
-            const userAgent = event.headers?.["user-agent"] || "unknown";
-            const clientIp = event.headers?.["client-ip"] || event.headers?.["x-forwarded-for"] || "unknown";
+            const userAgent = ((_a = event.headers) === null || _a === void 0 ? void 0 : _a["user-agent"]) || "unknown";
+            const clientIp = ((_b = event.headers) === null || _b === void 0 ? void 0 : _b["client-ip"]) || ((_c = event.headers) === null || _c === void 0 ? void 0 : _c["x-forwarded-for"]) || "unknown";
             span.setAttributes({
                 [semantic_conventions_1.ATTR_USER_AGENT_ORIGINAL]: userAgent,
                 [semantic_conventions_1.ATTR_CLIENT_ADDRESS]: clientIp,
-                "http.request.header.host": event.headers?.["host"] || "unknown",
-                "http.request.header.accept": event.headers?.["accept"] || "unknown",
+                "http.request.header.host": ((_d = event.headers) === null || _d === void 0 ? void 0 : _d["host"]) || "unknown",
+                "http.request.header.accept": ((_e = event.headers) === null || _e === void 0 ? void 0 : _e["accept"]) || "unknown",
             });
             // Log function start
             logger.info("Function execution started", {
@@ -120,7 +123,8 @@ const handler = async (event, context) => {
                         "http.method": event.httpMethod || "GET",
                         "error.type": "random_error",
                     });
-                } catch (error) {
+                }
+                catch (error) {
                     console.error("Failed to record request metrics:", error);
                 }
                 // Add error event
@@ -148,7 +152,8 @@ const handler = async (event, context) => {
                 (0, otel_1.recordRequest)(200, duration, {
                     "http.method": event.httpMethod || "GET",
                 });
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Failed to record request metrics:", error);
             }
             // Add success event
@@ -193,7 +198,8 @@ const handler = async (event, context) => {
                     "http.method": event.httpMethod || "GET",
                     "error.type": "unhandled_error",
                 });
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Failed to record request metrics:", error);
             }
             if (error instanceof Error) {
@@ -218,7 +224,8 @@ const handler = async (event, context) => {
             // Track active request completion (safely)
             try {
                 (0, otel_1.trackActiveRequest)(false);
-            } catch (error) {
+            }
+            catch (error) {
                 console.error("Failed to track active request completion:", error);
             }
             // End the span
