@@ -4,13 +4,10 @@ exports.shutdownOtel = exports.initializeOtel = exports.trackActiveRequest = exp
 const sdk_node_1 = require("@opentelemetry/sdk-node");
 const exporter_trace_otlp_http_1 = require("@opentelemetry/exporter-trace-otlp-http");
 const exporter_metrics_otlp_http_1 = require("@opentelemetry/exporter-metrics-otlp-http");
-const sdk_trace_base_1 = require("@opentelemetry/sdk-trace-base");
 const sdk_metrics_1 = require("@opentelemetry/sdk-metrics");
 const resources_1 = require("@opentelemetry/resources");
 const semantic_conventions_1 = require("@opentelemetry/semantic-conventions");
 const api_1 = require("@opentelemetry/api");
-const sdk_metrics_2 = require("@opentelemetry/sdk-metrics");
-const api_2 = require("@opentelemetry/api");
 let sdk = null;
 let meterProvider = null;
 // Service configuration
@@ -19,7 +16,7 @@ const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || "1.0.0";
 const ENVIRONMENT = process.env.OTEL_DEPLOYMENT_ENVIRONMENT || process.env.NODE_ENV || "development";
 // Enable OpenTelemetry diagnostics in development
 if (ENVIRONMENT === "development") {
-    api_2.diag.setLogger(new api_2.DiagConsoleLogger(), api_2.DiagLogLevel.INFO);
+    api_1.diag.setLogger(new api_1.DiagConsoleLogger(), api_1.DiagLogLevel.INFO);
 }
 // Create comprehensive metrics
 const meter = api_1.metrics.getMeter(SERVICE_NAME, SERVICE_VERSION);
@@ -92,7 +89,7 @@ const initializeOtel = () => {
         const resource = new resources_1.Resource({
             [semantic_conventions_1.ATTR_SERVICE_NAME]: SERVICE_NAME,
             [semantic_conventions_1.ATTR_SERVICE_VERSION]: SERVICE_VERSION,
-            [semantic_conventions_1.ATTR_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
+            [semantic_conventions_1.SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
             "service.instance.id": process.env.AWS_LAMBDA_FUNCTION_NAME || "netlify-function",
             "cloud.provider": "netlify",
             "cloud.platform": "netlify_functions",
@@ -132,7 +129,7 @@ const initializeOtel = () => {
         // Initialize the SDK with minimal configuration
         sdk = new sdk_node_1.NodeSDK({
             resource,
-            spanProcessor: new sdk_trace_base_1.BatchSpanProcessor(traceExporter),
+            traceExporter,
             metricReader: metricsReader,
             instrumentations,
         });
