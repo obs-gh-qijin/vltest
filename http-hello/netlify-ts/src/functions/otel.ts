@@ -4,7 +4,7 @@ import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
 import { Resource } from "@opentelemetry/resources";
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, ATTR_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
 import { metrics, diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
 import { MeterProvider } from "@opentelemetry/sdk-metrics";
 
@@ -99,13 +99,17 @@ export const initializeOtel = () => {
     const traceEndpoint = `${baseEndpoint}/v1/traces`;
     const metricsEndpoint = `${baseEndpoint}/v1/metrics`;
 
-    const ingestToken = process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN || "your_observe_ingest_token_here";
+    const ingestToken = process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN;
+
+    if (!ingestToken) {
+      console.warn("Warning: No Observe ingest token provided. Set OBSERVE_INGEST_TOKEN environment variable for proper observability data export.");
+    }
 
     // Create comprehensive resource attributes
     const resource = new Resource({
       [ATTR_SERVICE_NAME]: SERVICE_NAME,
       [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
-      [ATTR_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
+      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
       "service.instance.id": process.env.AWS_LAMBDA_FUNCTION_NAME || "netlify-function",
       "cloud.provider": "netlify",
       "cloud.platform": "netlify_functions",
@@ -151,8 +155,8 @@ export const initializeOtel = () => {
     // Initialize the SDK with minimal configuration
     sdk = new NodeSDK({
       resource,
-      spanProcessor: new BatchSpanProcessor(traceExporter),
-      metricReader: metricsReader,
+      spanProcessor: new BatchSpanProcessor(traceExporter) as any,
+      metricReader: metricsReader as any,
       instrumentations,
     });
 
