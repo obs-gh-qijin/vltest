@@ -82,12 +82,13 @@ const initializeOtel = () => {
     }
     try {
         // Initialize from environment variables with fallbacks
-        const baseEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318";
+        // Support both OBSERVE_OTEL_* and standard OTEL_* environment variables
+        const baseEndpoint = process.env.OBSERVE_OTEL_OTLP_ENDPOINT || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318";
         const traceEndpoint = `${baseEndpoint}/v1/traces`;
         const metricsEndpoint = `${baseEndpoint}/v1/metrics`;
-        const ingestToken = process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN;
+        const ingestToken = process.env.OBSERVE_OTEL_INGEST_TOKEN || process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN;
         if (!ingestToken) {
-            console.warn("Warning: No Observe ingest token provided. Set OBSERVE_INGEST_TOKEN environment variable for proper observability data export.");
+            console.warn("Warning: No Observe ingest token provided. Set OBSERVE_OTEL_INGEST_TOKEN, OBSERVE_INGEST_TOKEN, or OBSERVE_TOKEN environment variable for proper observability data export.");
         }
         // Create comprehensive resource attributes
         const resource = new resources_1.Resource({
