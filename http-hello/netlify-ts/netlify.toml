@@ -6,10 +6,10 @@
 [build.environment]
   NODE_ENV = "production"
   OTEL_EXPORTER_OTLP_ENDPOINT = "https://159336336075.collect.observeinc.com/v2/otel"
+  OTEL_EXPORTER_OTLP_BEARER_TOKEN = "ds15mfSgBlKQVdG2edNV:SPQMc-N7hnIg2EwperqseHNsRKyMDumx"
   OTEL_SERVICE_NAME = "netlify-ts-functions"
   OTEL_SERVICE_VERSION = "1.0.0"
   OTEL_DEPLOYMENT_ENVIRONMENT = "production"
-  OBSERVE_INGEST_TOKEN = "ds15mfSgBlKQVdG2edNV:SPQMc-N7hnIg2EwperqseHNsRKyMDumx"
 
 [dev]
   command = "pnpm run dev"
@@ -21,7 +21,15 @@
   OTEL_SERVICE_VERSION = "1.0.0"
   OTEL_DEPLOYMENT_ENVIRONMENT = "development"
 
+[functions]
+  directory = "functions"
+
 [[redirects]]
   from = "/hello"
+  to = "/.netlify/functions/hello"
+  status = 200
+
+[[redirects]]
+  from = "/hello/"
   to = "/.netlify/functions/hello"
   status = 200
