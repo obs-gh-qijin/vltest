@@ -42,7 +42,10 @@ This project includes comprehensive OpenTelemetry (OTEL) instrumentation that au
 # Main OTLP endpoint (without /v1/traces or /v1/metrics suffix)
 OTEL_EXPORTER_OTLP_ENDPOINT=https://your-endpoint.com/v2/otel
 
-# For Observe specifically:
+# Bearer token for OTLP authentication (standard OpenTelemetry variable)
+OTEL_EXPORTER_OTLP_BEARER_TOKEN=your_bearer_token_here
+
+# Alternative token variables (for Observe specifically):
 OBSERVE_INGEST_TOKEN=your_observe_ingest_token_here
 ```
 
@@ -53,6 +56,9 @@ OBSERVE_INGEST_TOKEN=your_observe_ingest_token_here
 OTEL_SERVICE_NAME=netlify-ts-functions
 OTEL_SERVICE_VERSION=1.0.0
 OTEL_DEPLOYMENT_ENVIRONMENT=production
+
+# Standard OpenTelemetry bearer token
+OTEL_EXPORTER_OTLP_BEARER_TOKEN=your_bearer_token_here
 
 # Alternative token variable names (fallback)
 OBSERVE_TOKEN=your_observe_ingest_token_here

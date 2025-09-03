@@ -100,10 +100,10 @@ export const initializeOtel = () => {
     const traceEndpoint = `${baseEndpoint}/v1/traces`;
     const metricsEndpoint = `${baseEndpoint}/v1/metrics`;
 
-    const ingestToken = process.env.OBSERVE_OTEL_INGEST_TOKEN || process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN;
+    const ingestToken = process.env.OTEL_EXPORTER_OTLP_BEARER_TOKEN || process.env.OBSERVE_OTEL_INGEST_TOKEN || process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN;
 
     if (!ingestToken) {
-      console.warn("Warning: No Observe ingest token provided. Set OBSERVE_OTEL_INGEST_TOKEN, OBSERVE_INGEST_TOKEN, or OBSERVE_TOKEN environment variable for proper observability data export.");
+      console.warn("Warning: No ingest token provided. Set OTEL_EXPORTER_OTLP_BEARER_TOKEN, OBSERVE_OTEL_INGEST_TOKEN, OBSERVE_INGEST_TOKEN, or OBSERVE_TOKEN environment variable for proper observability data export.");
     }
 
     // Create comprehensive resource attributes
