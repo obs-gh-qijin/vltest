@@ -199,6 +199,13 @@ const handler: Handler = async (event, context) => {
             "Content-Type": "text/plain",
             "X-Trace-Id": spanContext.traceId,
             "X-Span-Id": spanContext.spanId,
+            // Security headers for Netlify validation
+            "X-Frame-Options": "DENY",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "Content-Security-Policy": "default-src 'self'",
+            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+            "X-XSS-Protection": "1; mode=block",
           },
         };
       } catch (error) {
@@ -242,6 +249,13 @@ const handler: Handler = async (event, context) => {
             "Content-Type": "text/plain",
             "X-Trace-Id": spanContext.traceId,
             "X-Span-Id": spanContext.spanId,
+            // Security headers for Netlify validation
+            "X-Frame-Options": "DENY",
+            "X-Content-Type-Options": "nosniff",
+            "Referrer-Policy": "strict-origin-when-cross-origin",
+            "Content-Security-Policy": "default-src 'self'",
+            "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
+            "X-XSS-Protection": "1; mode=block",
           },
         };
       } finally {
