@@ -1,7 +1,8 @@
 import { Handler } from "@netlify/functions";
 import { trace, SpanStatusCode, SpanKind } from "@opentelemetry/api";
+import { SEMATTRS_HTTP_METHOD, SEMATTRS_HTTP_ROUTE, SEMATTRS_HTTP_STATUS_CODE, SEMATTRS_HTTP_USER_AGENT } from "@opentelemetry/semantic-conventions";
 // Update import to use the local otel.ts file
-import { initializeOtel, recordRequest } from "./otel";
+import { initializeOtel, recordRequest, logger } from "./otel";
 
 // Initialize OpenTelemetry (only once)
 let otelInitialized = false;
@@ -16,26 +17,39 @@ const tracer = trace.getTracer("netlify-functions", "1.0.0");
 const handler: Handler = async (event, context) => {
   // Create a span for the function execution
   return tracer.startActiveSpan(
-    "hello-function",
+    "GET /hello",
     {
       kind: SpanKind.SERVER,
       attributes: {
-        "http.method": event.httpMethod || "GET",
-        "http.route": "/hello",
+        [SEMATTRS_HTTP_METHOD]: event.httpMethod || "GET",
+        [SEMATTRS_HTTP_ROUTE]: "/hello",
         "function.name": "hello",
         "cloud.provider": "netlify",
+        "faas.name": "hello",
+        "faas.trigger": "http",
         "request.id": context.awsRequestId || "unknown",
       },
     },
     async (span) => {
+      const startTime = Date.now();
+
       try {
-        // Add additional attributes
+        // Add additional attributes using semantic conventions
         span.setAttributes({
-          user_agent: event.headers?.["user-agent"] || "unknown",
-          client_ip:
+          [SEMATTRS_HTTP_USER_AGENT]: event.headers?.["user-agent"] || "unknown",
+          "client.address":
             event.headers?.["client-ip"] ||
             event.headers?.["x-forwarded-for"] ||
             "unknown",
+        });
+
+        // Log function start with trace context
+        logger.info("Function execution started", {
+          traceId: span.spanContext().traceId,
+          spanId: span.spanContext().spanId,
+          functionName: "hello",
+          httpMethod: event.httpMethod || "GET",
+          userAgent: event.headers?.["user-agent"] || "unknown",
         });
 
         // Generate a random number between 1 and 9
@@ -56,15 +70,24 @@ const handler: Handler = async (event, context) => {
             code: SpanStatusCode.ERROR,
             message: "Random error occurred",
           });
-          span.setAttributes({ "http.status_code": 500 });
-          
+          span.setAttributes({ [SEMATTRS_HTTP_STATUS_CODE]: 500 });
+
           // Record the request metric with error status
-          recordRequest(500);
+          recordRequest(500, Date.now() - startTime);
 
           // Add error event
           span.addEvent("function.error", {
             "error.type": "random_error",
             "error.message": "Random error occurred",
+          });
+
+          // Log error with trace context
+          logger.error("Function execution failed", {
+            traceId: span.spanContext().traceId,
+            spanId: span.spanContext().spanId,
+            error: "Random error occurred",
+            statusCode: 500,
+            duration: Date.now() - startTime,
           });
 
           // Record exception
@@ -76,10 +99,10 @@ const handler: Handler = async (event, context) => {
 
         // Success case
         span.setStatus({ code: SpanStatusCode.OK });
-        span.setAttributes({ "http.status_code": 200 });
-        
+        span.setAttributes({ [SEMATTRS_HTTP_STATUS_CODE]: 200 });
+
         // Record the request metric with success status
-        recordRequest(200);
+        recordRequest(200, Date.now() - startTime);
 
         // Add success event
         span.addEvent("function.success", {
@@ -87,6 +110,16 @@ const handler: Handler = async (event, context) => {
         });
 
         const message = "netlify-ts hello success";
+        const duration = Date.now() - startTime;
+
+        // Log success with trace context
+        logger.info("Function execution completed successfully", {
+          traceId: span.spanContext().traceId,
+          spanId: span.spanContext().spanId,
+          statusCode: 200,
+          duration,
+          responseMessage: message,
+        });
 
         return {
           statusCode: 200,
@@ -97,19 +130,30 @@ const handler: Handler = async (event, context) => {
           },
         };
       } catch (error) {
+        const duration = Date.now() - startTime;
+
         // Handle errors and update span
         span.setStatus({
           code: SpanStatusCode.ERROR,
           message: error instanceof Error ? error.message : "Unknown error",
         });
-        span.setAttributes({ "http.status_code": 500 });
-        
+        span.setAttributes({ [SEMATTRS_HTTP_STATUS_CODE]: 500 });
+
         // Record the request metric with error status
-        recordRequest(500);
+        recordRequest(500, duration);
 
         if (error instanceof Error) {
           span.recordException(error);
         }
+
+        // Log error with trace context
+        logger.error("Function execution failed with exception", {
+          traceId: span.spanContext().traceId,
+          spanId: span.spanContext().spanId,
+          error: error instanceof Error ? error.message : "Unknown error",
+          statusCode: 500,
+          duration,
+        });
 
         return {
           statusCode: 500,
