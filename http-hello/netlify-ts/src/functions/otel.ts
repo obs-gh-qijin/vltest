@@ -131,10 +131,11 @@ export const shutdownOtel = async () => {
       console.error("Error shutting down OpenTelemetry:", error);
     }
   }
-  process.exit(0);
+  // Note: process.exit(0) removed for Netlify Functions compatibility
 };
 
-// Auto-shutdown on process exit
-process.on("SIGTERM", shutdownOtel);
-process.on("SIGINT", shutdownOtel);
+// Note: Auto-shutdown handlers disabled for Netlify Functions
+// Netlify handles process lifecycle differently
+// process.on("SIGTERM", shutdownOtel);
+// process.on("SIGINT", shutdownOtel);
 

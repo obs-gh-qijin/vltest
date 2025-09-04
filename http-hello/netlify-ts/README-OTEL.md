@@ -114,6 +114,6 @@ pnpm run dev
 
 ## 📁 File Structure
 
-- `src/otel.ts` - OpenTelemetry configuration and initialization
+- `src/functions/otel.ts` - OpenTelemetry configuration and initialization
 - `src/functions/hello.ts` - Instrumented Netlify function
 - `netlify.toml` - Environment configuration for deployment
