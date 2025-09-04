@@ -36,10 +36,10 @@ const handler: Handler = async (event, context) => {
       try {
         // Add additional attributes using semantic conventions
         span.setAttributes({
-          [SEMATTRS_HTTP_USER_AGENT]: event.headers?.["user-agent"] || "unknown",
+          [SEMATTRS_HTTP_USER_AGENT]: (event.headers && event.headers["user-agent"]) || "unknown",
           "client.address":
-            event.headers?.["client-ip"] ||
-            event.headers?.["x-forwarded-for"] ||
+            (event.headers && event.headers["client-ip"]) ||
+            (event.headers && event.headers["x-forwarded-for"]) ||
             "unknown",
         });
 
@@ -49,7 +49,7 @@ const handler: Handler = async (event, context) => {
           spanId: span.spanContext().spanId,
           functionName: "hello",
           httpMethod: event.httpMethod || "GET",
-          userAgent: event.headers?.["user-agent"] || "unknown",
+          userAgent: (event.headers && event.headers["user-agent"]) || "unknown",
         });
 
         // Generate a random number between 1 and 9
@@ -171,4 +171,4 @@ const handler: Handler = async (event, context) => {
   );
 };
 
-export { handler };
+exports.handler = handler;
