@@ -9,8 +9,9 @@
 # production
 /build
 
-# js
+# js (except functions directory)
 *.js
+!functions/*.js
 
 # misc
 .DS_Store

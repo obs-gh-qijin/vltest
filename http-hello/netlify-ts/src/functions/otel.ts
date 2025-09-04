@@ -1,21 +1,89 @@
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
-import { metrics } from "@opentelemetry/api";
+import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics";
+import { Resource } from "@opentelemetry/resources";
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION, SEMRESATTRS_DEPLOYMENT_ENVIRONMENT } from "@opentelemetry/semantic-conventions";
+import { metrics, diag, DiagConsoleLogger, DiagLogLevel } from "@opentelemetry/api";
+import { MeterProvider } from "@opentelemetry/sdk-metrics";
 
 let sdk: NodeSDK | null = null;
+let meterProvider: MeterProvider | null = null;
 
-// Create a counter for HTTP requests
-export const requestCounter = metrics
-  .getMeter("netlify-functions")
-  .createCounter("http.server.requests", {
-    description: "Count of HTTP server requests",
-  });
+// Service configuration
+const SERVICE_NAME = process.env.OTEL_SERVICE_NAME || "netlify-ts-functions";
+const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || "1.0.0";
+const ENVIRONMENT = process.env.OTEL_DEPLOYMENT_ENVIRONMENT || process.env.NODE_ENV || "development";
 
-// Function to record a request with status code
-export const recordRequest = (statusCode: number) => {
-  requestCounter.add(1, {
+// Enable OpenTelemetry diagnostics in development
+if (ENVIRONMENT === "development") {
+  diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.INFO);
+}
+
+// Create comprehensive metrics
+const meter = metrics.getMeter(SERVICE_NAME, SERVICE_VERSION);
+
+// HTTP request metrics
+export const requestCounter = meter.createCounter("http.server.requests", {
+  description: "Total number of HTTP server requests",
+});
+
+export const requestDuration = meter.createHistogram("http.server.request.duration", {
+  description: "HTTP server request duration in milliseconds",
+  unit: "ms",
+});
+
+export const activeRequests = meter.createUpDownCounter("http.server.active_requests", {
+  description: "Number of active HTTP server requests",
+});
+
+// Function performance metrics
+export const functionExecutionTime = meter.createHistogram("function.execution.duration", {
+  description: "Function execution duration in milliseconds",
+  unit: "ms",
+});
+
+export const functionInvocations = meter.createCounter("function.invocations", {
+  description: "Total number of function invocations",
+});
+
+// Error metrics
+export const errorCounter = meter.createCounter("function.errors", {
+  description: "Total number of function errors",
+});
+
+// Function to record comprehensive request metrics
+export const recordRequest = (statusCode: number, duration?: number, attributes?: Record<string, string>) => {
+  const baseAttributes = {
     "http.status_code": statusCode.toString(),
+    "http.status_class": `${Math.floor(statusCode / 100)}xx`,
+    "function.name": "hello",
+    "service.name": SERVICE_NAME,
+    ...attributes,
+  };
+
+  requestCounter.add(1, baseAttributes);
+  functionInvocations.add(1, baseAttributes);
+  
+  if (duration !== undefined) {
+    requestDuration.record(duration, baseAttributes);
+    functionExecutionTime.record(duration, baseAttributes);
+  }
+  
+  if (statusCode >= 400) {
+    errorCounter.add(1, {
+      ...baseAttributes,
+      "error.type": statusCode >= 500 ? "server_error" : "client_error",
+    });
+  }
+};
+
+// Function to track active requests
+export const trackActiveRequest = (increment: boolean) => {
+  activeRequests.add(increment ? 1 : -1, {
+    "service.name": SERVICE_NAME,
+    "function.name": "hello",
   });
 };
 
@@ -25,18 +93,37 @@ export const initializeOtel = () => {
     return sdk;
   }
 
-  // Initialize from environment variables with fallbacks
-  const otelEndpoint =
-    (process.env.OTEL_EXPORTER_OTLP_ENDPOINT ||
-    "http://localhost:4318")+ "/v1/traces";
-
-  const ingestToken =
-    process.env.OBSERVE_TOKEN || "your_observe_ingest_token_here";
-  const serviceName = process.env.OTEL_SERVICE_NAME || "netlify-ts-functions";
-
   try {
-    // Hard-coded headers for Observe
+    // Initialize from environment variables with fallbacks
+    // Support both OBSERVE_OTEL_* and standard OTEL_* environment variables
+    const baseEndpoint = process.env.OBSERVE_OTEL_OTLP_ENDPOINT || process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318";
+    const traceEndpoint = `${baseEndpoint}/v1/traces`;
+    const metricsEndpoint = `${baseEndpoint}/v1/metrics`;
 
+    const ingestToken = process.env.OTEL_EXPORTER_OTLP_BEARER_TOKEN || process.env.OBSERVE_OTEL_INGEST_TOKEN || process.env.OBSERVE_INGEST_TOKEN || process.env.OBSERVE_TOKEN;
+
+    if (!ingestToken) {
+      console.warn("Warning: No ingest token provided. Set OTEL_EXPORTER_OTLP_BEARER_TOKEN, OBSERVE_OTEL_INGEST_TOKEN, OBSERVE_INGEST_TOKEN, or OBSERVE_TOKEN environment variable for proper observability data export.");
+    }
+
+    // Create comprehensive resource attributes
+    const resource = new Resource({
+      [ATTR_SERVICE_NAME]: SERVICE_NAME,
+      [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
+      [SEMRESATTRS_DEPLOYMENT_ENVIRONMENT]: ENVIRONMENT,
+      "service.instance.id": process.env.AWS_LAMBDA_FUNCTION_NAME || "netlify-function",
+      "cloud.provider": "netlify",
+      "cloud.platform": "netlify_functions",
+      "faas.name": "hello",
+      "faas.version": SERVICE_VERSION,
+      "faas.runtime": "nodejs",
+      "faas.runtime.version": process.version,
+      "telemetry.sdk.name": "opentelemetry",
+      "telemetry.sdk.language": "nodejs",
+      "telemetry.sdk.version": "1.0.0",
+    });
+
+    // Headers for Observe
     const headers = {
       Authorization: `Bearer ${ingestToken}`,
       "x-observe-target-package": "Tracing",
@@ -44,20 +131,45 @@ export const initializeOtel = () => {
 
     // Create the OTLP trace exporter for Observe
     const traceExporter = new OTLPTraceExporter({
-      url: otelEndpoint,
+      url: traceEndpoint,
       headers,
     });
 
-    // Initialize the SDK with resource attributes
+    // Create the OTLP metrics exporter for Observe
+    const metricsExporter = new OTLPMetricExporter({
+      url: metricsEndpoint,
+      headers: {
+        Authorization: `Bearer ${ingestToken}`,
+        "x-observe-target-package": "Metrics",
+      },
+    });
+
+    // Create metrics reader optimized for serverless
+    const metricsReader = new PeriodicExportingMetricReader({
+      exporter: metricsExporter,
+      exportIntervalMillis: 10000, // Export every 10 seconds for faster feedback
+    });
+
+    // Minimal instrumentation for Netlify Functions - disable most to reduce cold start time
+    const instrumentations: any[] = [];
+
+    // Initialize the SDK with minimal configuration
     sdk = new NodeSDK({
-      serviceName,
-      spanProcessor: new BatchSpanProcessor(traceExporter),
-      instrumentations: [], // Add auto-instrumentations if needed
+      resource,
+      spanProcessor: new BatchSpanProcessor(traceExporter) as any,
+      metricReader: metricsReader as any,
+      instrumentations,
     });
 
     sdk.start();
-    console.log(`OpenTelemetry initialized for service: ${serviceName}`);
-    console.log(`Tracing endpoint: ${otelEndpoint}`);
+    
+    console.log(`OpenTelemetry initialized successfully:`);
+    console.log(`  Service: ${SERVICE_NAME}@${SERVICE_VERSION}`);
+    console.log(`  Environment: ${ENVIRONMENT}`);
+    console.log(`  Trace endpoint: ${traceEndpoint}`);
+    console.log(`  Metrics endpoint: ${metricsEndpoint}`);
+    console.log(`  Token configured: ${ingestToken ? 'Yes' : 'No'}`);
+    console.log(`  Diagnostics enabled: ${ENVIRONMENT === 'development' ? 'Yes' : 'No'}`);
 
     return sdk;
   } catch (error) {
@@ -66,7 +178,7 @@ export const initializeOtel = () => {
   }
 };
 
-// Graceful shutdown
+// Graceful shutdown (simplified for serverless)
 export const shutdownOtel = async () => {
   if (sdk) {
     try {
@@ -76,10 +188,4 @@ export const shutdownOtel = async () => {
       console.error("Error shutting down OpenTelemetry:", error);
     }
   }
-  process.exit(0);
 };
-
-// Auto-shutdown on process exit
-process.on("SIGTERM", shutdownOtel);
-process.on("SIGINT", shutdownOtel);
-
