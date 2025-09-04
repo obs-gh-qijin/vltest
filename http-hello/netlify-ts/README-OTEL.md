@@ -5,7 +5,9 @@ This project includes OpenTelemetry (OTEL) instrumentation that automatically tr
 ## 🚀 Features
 
 - **Automatic tracing** of function executions with detailed spans
-- **Custom attributes** including HTTP method, route, user agent, client IP
+- **Semantic conventions** for HTTP attributes following OpenTelemetry standards
+- **Structured logging** with trace correlation and JSON output
+- **Comprehensive metrics** including request counts and duration histograms
 - **Error tracking** with exception recording and error events
 - **Success/failure events** with custom attributes
 - **Trace ID** included in response headers for correlation
@@ -19,8 +21,8 @@ Set the following environment variables to configure OpenTelemetry:
 ### Required
 
 ```bash
-OTEL_EXPORTER_OTLP_ENDPOINT=https://your-endpoint.com/v2/otel
-OTEL_EXPORTER_OTLP_HEADERS='{"Authorization":"Bearer YOUR_TOKEN","x-observe-target-package":"Tracing"}'
+OTEL_EXPORTER_OTLP_ENDPOINT=https://your-endpoint.com
+OTEL_EXPORTER_OTLP_BEARER_TOKEN=your_bearer_token_here
 ```
 
 ### Optional
@@ -29,6 +31,8 @@ OTEL_EXPORTER_OTLP_HEADERS='{"Authorization":"Bearer YOUR_TOKEN","x-observe-targ
 OTEL_SERVICE_NAME=netlify-ts-functions
 OTEL_SERVICE_VERSION=1.0.0
 ```
+
+**Note**: The instrumentation automatically appends `/v1/traces` and `/v1/metrics` to the endpoint URL for the respective exporters.
 
 ## 🔧 Supported OTLP Backends
 
@@ -71,13 +75,15 @@ OTEL_EXPORTER_OTLP_HEADERS='{"api-key":"YOUR_LICENSE_KEY"}'
 
 The instrumentation automatically captures:
 
-- **Function execution spans** with timing and status
-- **HTTP request details** (method, route, user agent, client IP)
-- **Function-specific attributes** (name, cloud provider, request ID)
+- **Function execution spans** with timing and status using semantic conventions
+- **HTTP request details** (method, route, user agent, client IP) following OpenTelemetry standards
+- **Function-specific attributes** (name, cloud provider, request ID, FaaS attributes)
 - **Custom events** (function start, success, errors)
 - **Random number generation** (for demo purposes)
 - **Error details** with stack traces and exception recording
 - **Trace IDs** in response headers for request correlation
+- **Structured logs** with trace correlation in JSON format
+- **Metrics** including request counts and duration histograms with status code labels
 
 ## 🧪 Testing Locally
 
@@ -108,6 +114,6 @@ pnpm run dev
 
 ## 📁 File Structure
 
-- `src/otel.ts` - OpenTelemetry configuration and initialization
+- `src/functions/otel.ts` - OpenTelemetry configuration and initialization
 - `src/functions/hello.ts` - Instrumented Netlify function
 - `netlify.toml` - Environment configuration for deployment
